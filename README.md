@@ -1,2 +1,2 @@
-# odp-image-build-example
+# sectools-jenkins-image-example
 Example of Docker image building in Jenkins Declarative
