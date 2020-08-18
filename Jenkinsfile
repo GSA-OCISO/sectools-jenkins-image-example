@@ -77,7 +77,7 @@ pipeline {
                 script {
  
                     //Example of starting and entering a container from the image you created.
-                    docker.image("${pushImageName}:${pushImageTag}").inside {
+                    docker.image("https://${REGISTRY_URL}/${pushImageName}:${pushImageTag}").inside {
                         //Just an example showing that your image does indeed have the file generated in the build step.
                         //This is due to the Docker file copying the src directory to the /usr/share/nginx/html.
                         sh 'ls -la /usr/share/nginx/html/hi.html'
