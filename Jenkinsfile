@@ -5,12 +5,10 @@ def buildImageName = "nginx:latest"
 //The Docker file we will use to build the image we will Push to our repository
 def dockerFile = 'Dockerfile'
 //The image name we will Push to our repository
-def pushImageName = "627566894399.dkr.ecr.us-east-1.amazonaws.com/sectools-hardened"
+def pushImageName = "sectools-hardened"
 //The image tag we will apply to the image we Push to our repository
 def pushImageTag = env.TAG_NAME ?: 'latest'
 //Setup Docker registry variables
-//The ECR registry information 
-def ecrRegistryUrl = 'https://627566894399.dkr.ecr.us-east-1.amazonaws.com/sectools-hardened'
 //Credential id stored
 def ecrRegistryCredID = 'ecr:us-east-1:sectools-aws-jenkins'
 //Slack Channel to post to for build status
@@ -24,7 +22,7 @@ pipeline {
             label 'ubuntu && docker'
         }
     }
- 
+
     stages {
         stage('Build'){
             steps {
@@ -64,8 +62,10 @@ pipeline {
                         do not specify minor version the cached image will see this as an already met requirement and not reinstall
                         if caching is enabled.
                     */
-                    dockerImage = docker.build("${pushImageName}:${pushImageTag}", "-f ${dockerFile} --no-cache ./")
- 
+                      withCredentials([string(credentialsId: 'ecr-repo-arn', variable: 'REGISTRY_URL')]) {
+                        dockerImage = docker.build("https://${REGISTRY_URL}/${pushImageName}:${pushImageTag}", "-f ${dockerFile} --no-cache ./")
+                    }
+                    
                 }
             }
         }
@@ -96,11 +96,13 @@ pipeline {
                 }
             }
             steps {
-                script {
-                    docker.withRegistry("${ecrRegistryUrl}", "${ecrRegistryCredID}") {
-                        dockerImage.push()
-                        //Alternate way to push by image tag
-                        //docker.image('demo').push('latest')
+                withCredentials([string(credentialsId: 'ecr-repo-arn', variable: 'REGISTRY_URL')]) {
+                    script {
+                        docker.withRegistry("https://${REGISTRY_URL}", "${ecrRegistryCredID}") {
+                            dockerImage.push()
+                            //Alternate way to push by image tag
+                            //docker.image('demo').push('latest')
+                        }
                     }
                     
                 }
