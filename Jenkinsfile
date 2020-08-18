@@ -63,7 +63,7 @@ pipeline {
                         if caching is enabled.
                     */
                       withCredentials([string(credentialsId: 'ecr-repo-arn', variable: 'REGISTRY_URL')]) {
-                        dockerImage = docker.build("https://${REGISTRY_URL}/${pushImageName}:${pushImageTag}", "-f ${dockerFile} --no-cache ./")
+                        dockerImage = docker.build("${REGISTRY_URL}/${pushImageName}:${pushImageTag}", "-f ${dockerFile} --no-cache ./")
                     }
                     
                 }
