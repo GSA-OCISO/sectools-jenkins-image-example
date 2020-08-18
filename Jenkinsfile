@@ -62,7 +62,7 @@ pipeline {
                         do not specify minor version the cached image will see this as an already met requirement and not reinstall
                         if caching is enabled.
                     */
-                      withCredentials([string(credentialsId: 'ecr-repo-arn', variable: 'REGISTRY_ARN')]) {
+                    withCredentials([string(credentialsId: 'ecr-repo-arn', variable: 'REGISTRY_ARN')]) {
                         dockerImage = docker.build("${REGISTRY_ARN}/${pushImageName}:${pushImageTag}", "-f ${dockerFile} --no-cache ./")
                     }
                     
