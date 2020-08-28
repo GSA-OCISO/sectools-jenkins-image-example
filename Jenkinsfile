@@ -11,6 +11,9 @@ def pushImageTag = env.TAG_NAME ?: 'latest'
 //Setup Docker registry variables
 //Credential id stored
 def ecrRegistryCredID = 'ecr:us-east-1:sectools-aws-jenkins'
+//Twistlock Credential id stored
+def twistlockCredID = 'twistlock'
+def twistlockURL = 'https://10.177.112.120:32281/'
 //Slack Channel to post to for build status
 def slackChannel = "sectools-builds"
  
@@ -73,15 +76,35 @@ pipeline {
         //In this stage we will want to run addition tests.  If your Pipeline makes it to this stage
         //the Build and Docker Build stages can safely be assumed to have completed successfully.
         stage('Test'){
-            steps {
-                script {
-                    withCredentials([string(credentialsId: 'ecr-repo-arn', variable: 'REGISTRY_ARN')]) {
-                        //Example of starting and entering a container from the image you created.
-                        docker.image("${REGISTRY_ARN}/${pushImageName}:${pushImageTag}").inside {
-                            //Just an example showing that your image does indeed have the file generated in the build step.
-                            //This is due to the Docker file copying the src directory to the /usr/share/nginx/html.
-                            sh 'ls -la /usr/share/nginx/html/hi.html'
+            script {
+                steps {
+                    withCredentials([usernamePassword(credentialsId:${twistlockCredID} , passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                        def image = ${REGISTRY_ARN}/${pushImageName}:${pushImageTag}
+                        echo "getting twistlock CLI"
+                        sh "curl -k -u '${USER}':'${PASS}' -H 'Content-Type: application/json' -X GET -o ./twistcli ${twistlockURL}/api/v1/util/twistcli"
+                        sh "chmod +x ./twistcli"
+                        sh "sleep 1"
+                        sh "./twistcli -v"
+                        sh "./twistcli images scan --publish --output-file twistlock_results.json --details --address  ${twistlockURL} -u ${USER} -p '${PASS}' ${image} > /dev/null"
+                        def json_results = readJSON(file: "twistlock_results.json")
+                        json_results.results.each {
+                          echo """
+                              Twistlock Scan Results: ${it.id}
+                              -----------------------------------------
+                              CVE Results:
+                              Low:      ${it.vulnerabilityDistribution.low}
+                              Medium:   ${it.vulnerabilityDistribution.medium}
+                              High:     ${it.vulnerabilityDistribution.high}
+                              Critical: ${it.vulnerabilityDistribution.critical}
+                              Compliance Results:
+                              Low:      ${it.complianceDistribution.low}
+                              Medium:   ${it.complianceDistribution.medium}
+                              High:     ${it.complianceDistribution.high}
+                              Critical: ${it.complianceDistribution.critical}
+                          """.stripIndent()
                         }
+                        echo "Removing twistcli..."
+                        sh "rm -f ./twistcli"
                     }
                 }
             }
